@@ -1,0 +1,170 @@
+#include "SoftwareSerial.h"
+
+#define pump 8
+#define sensor_input A0
+SoftwareSerial esp(1, 0);
+
+int watering_duration = 0;
+String con = "", tc = "", data = "";
+String server = "192.168.1.100";
+String url_sensor_value = "/receive.php";
+String url_watering_duration = "/receive_watering_duration.php";
+
+void setup()
+{
+  esp.begin(9600);
+  Serial.begin(9600);
+  pinMode(sensor_input, INPUT);
+  pinMode(pump, OUTPUT);
+  digitalWrite(13, HIGH);
+  esp.println("AT+CWQAP");
+  delay(1000);
+  wifi_init();
+}
+
+void loop()
+{
+  //delay(5000);
+  //wifi_init();
+  //delay(1000);
+  //send_data();
+  //delay(5000);
+  int v=sensor_value();
+  Serial.println(v);
+  delay(2000);
+  if(check_moisture(){
+	bool check = true;
+	while(check){
+		delay(2000);
+		check = check_moisture();
+	}
+	watering_duration=0;
+	send_watering_time();
+  }
+  delay(500000);
+
+}
+
+void wifi_init()
+{
+  //Serial.println("Connecting to wifi....");
+  delay(1000);
+  esp.println("AT+RST");
+  delay(1000);
+  esp.println("AT+CWMODE=3");
+  delay(1000);
+  esp.println("AT+CWJAP=\"C S E 7\",\"unique07\"");
+  delay(5000);
+  //Serial.println("Connected to wifi");
+  delay(1000);
+}
+
+int sensor_value()
+{
+  delay(1000);
+  int sensor_val = analogRead(sensor_input);
+  delay(1000);
+  return sensor_val;
+}
+
+void send_data()
+{
+  //Serial.println("Sending data...");
+  //delay(1000);
+  data="sensor_value=" + (String)sensor_value();
+  delay(1000);
+  tc="AT+CIPSTART=\"TCP\",\"192.168.1.100\",80";
+  esp.println(tc);
+  delay(3000);
+  String postRequest =
+  
+  "POST " + url_sensor_value + " HTTP/1.1\r\n" +
+  
+  "Host: " + server + "\r\n" +
+  
+  "Accept: *" + "/" + "*\r\n" +
+  
+  "Content-Length: " + data.length() + "\r\n" +
+  
+  "Content-Type: application/x-www-form-urlencoded\r\n" +
+  
+  "\r\n" + data;
+  
+  esp.print("AT+CIPSEND=");
+  delay(100);
+  esp.println(postRequest.length());
+  delay(2000);
+  esp.println(postRequest);
+  delay(1000);
+}
+
+void send_watering_time(){
+  data = ""watering_time=" + (String)watering_duration;
+  delay(1000);
+  tc="AT+CIPSTART=\"TCP\",\"192.168.1.100\",80";
+  esp.println(tc);
+  delay(3000);
+
+  String postRequest =
+  
+  "POST " + url_watering_duratioin + " HTTP/1.1\r\n" +
+  
+  "Host: " + server + "\r\n" +
+  
+  "Accept: *" + "/" + "*\r\n" +
+  
+  "Content-Length: " + data.length() + "\r\n" +
+  
+  "Content-Type: application/x-www-form-urlencoded\r\n" +
+  
+  "\r\n" + data;
+  
+  esp.print("AT+CIPSEND=");
+  delay(100);
+  esp.println(postRequest.length());
+  delay(2000);
+  esp.println(postRequest);
+  delay(1000);
+}
+
+bool check_moisture(){
+  int sensor_val = sensor_value();
+  Serial.println(sensor_val);
+  if(sensor_val <1200 && sensor_val >=600){
+	watering_duration +=5;
+	digitalWrite(pump, HIGH);
+	delay(1000);
+	digitalWrite(pump, LOW);
+	Serial.println("Working in high value");
+	return true;
+  }
+  else if(sensor_val <600 && sensor_val >=500){
+	watering_duration +=2;
+	digitalWrite(pump, HIGH);
+	delay(5000);
+	digitalWrite(pump, LOW);
+	Serial.println("Working in mid value");
+	return true;
+  }
+  else{
+ 	return false;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
